@@ -15,7 +15,7 @@ secret_patterns = [
 ]
 
 scan_extensions = {".py", ".html", ".css", ".js", ".json", ".yml", ".yaml", ".env"}
-skip_dirs = {".git", "__pycache__", ".venv", "venv", "node_modules"}
+skip_dirs = {".git", "__pycache__", ".venv", "venv", ".github", "node_modules"}
 issues = []
 
 for root, dirs, files in os.walk("."):
