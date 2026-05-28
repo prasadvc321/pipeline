@@ -118,7 +118,7 @@ jobs:
     - name: 🔁 Rollback on Failure
       if: failure()
       run: |
-        ssh -tt ec2-user@${{ secrets.EC2_HOST }} '
+        ssh -tt ec2-user@${{ secrets.EC2_HOST }} 
 
           echo "❌ Deployment failed. Rolling back..."
 
