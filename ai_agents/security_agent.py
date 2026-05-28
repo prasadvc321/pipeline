@@ -7,7 +7,8 @@ danger_keywords = [
     "password",
     "secret",
     "token",
-    "api_key"
+    "api_key",
+    "mail"
 ]
 
 issues_found = False
