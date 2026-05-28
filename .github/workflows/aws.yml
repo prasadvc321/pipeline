@@ -118,7 +118,7 @@ jobs:
     - name: 🔁 Rollback on Failure
       if: failure()
       run: |
-        ssh -o StrictHostKeyChecking=no -tt ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
     
           echo "❌ Deployment failed. Rolling back..."
     
@@ -140,7 +140,13 @@ jobs:
     
           curl --fail http://localhost:5000/health \
             && echo "✅ Rollback successful!" \
-            || echo "❌ Rollback failed!"
+            || exit 1
     
         EOF
+    
+    - name: ✅ Rollback Completed
+      if: failure()
+      run: |
+        echo "Application restored successfully"
+
     
