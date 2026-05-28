@@ -1,36 +1,45 @@
-
 import os
+import re
 
-print("🔐 Running Security Agent...")
+from agent_guard import fail
 
-danger_keywords = [
-    "password",
-    "secret",
-    "token",
-    "api_key",
-    "mail"
+print("Running Security Agent...")
+
+secret_patterns = [
+    r"(?i)\bpassword\b\s*[:=]\s*['\"][^'\"]{4,}['\"]",
+    r"(?i)\bsecret\b\s*[:=]\s*['\"][^'\"]{8,}['\"]",
+    r"(?i)\btoken\b\s*[:=]\s*['\"][^'\"]{8,}['\"]",
+    r"(?i)\bapi[_-]?key\b\s*[:=]\s*['\"][^'\"]{8,}['\"]",
+    r"(?i)\bmail\b\s*[:=]\s*['\"][^'\"]+@[^'\"]+['\"]",
 ]
 
-issues_found = False
+scan_extensions = {".py", ".html", ".css", ".js", ".json", ".yml", ".yaml", ".env"}
+skip_dirs = {".git", "__pycache__", ".venv", "venv", "node_modules"}
+issues = []
 
 for root, dirs, files in os.walk("."):
+    dirs[:] = [directory for directory in dirs if directory not in skip_dirs]
 
-    for file in files:
+    for file_name in files:
+        _, extension = os.path.splitext(file_name)
 
-        if file.endswith(".py"):
+        if extension not in scan_extensions:
+            continue
 
-            path = os.path.join(root, file)
+        path = os.path.join(root, file_name)
 
-            with open(path, "r", errors="ignore") as f:
+        with open(path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
 
-                content = f.read().lower()
+        for pattern in secret_patterns:
+            if re.search(pattern, content):
+                issues.append(path)
+                break
 
-                for keyword in danger_keywords:
+if issues:
+    print("Possible hard-coded secret value found in:")
+    for path in sorted(set(issues)):
+        print(f"- {path}")
+    fail("Security Agent found blocking condition(s).")
 
-                    if keyword in content:
-                        print(f"⚠️ Possible secret in: {path}")
-                        issues_found = True
-
-if not issues_found:
-    print("✅ Security scan passed.")
-
+print("Security scan passed.")
