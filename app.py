@@ -1377,7 +1377,7 @@ CONTACT_HTML = """
       <a class="card contact-card" href="mailto:veerasir">
         <div class="cc-icon cc-icon-1">📧</div>
         <h3>Email</h3>
-        <span>mail@gmail.com</span>
+        <span>veerasirops</span>
       </a>
       <a class="card contact-card" href="/">
         <div class="cc-icon cc-icon-2">💼</div>
