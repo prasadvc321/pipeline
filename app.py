@@ -814,9 +814,9 @@ HOME_HTML = """
         AI-Powered · AWS · Azure · GCP
       </div>
       <h1 class="hero-title fade-up delay-1">
-        Wonderful<br>
-        <span class="glow-text">MultiCloud</span><br>
-        DevOps
+        Multicloud <br>
+        <span class="glow-text">Devops</span><br>
+        CiCD By Veera sir
       </h1>
       <p class="hero-sub fade-up delay-2">
         Build, scan, deploy, observe and recover modern cloud applications
@@ -868,7 +868,7 @@ HOME_HTML = """
   <section class="features">
     <div class="section-head fade-up">
       <div class="eyebrow">Platform Capabilities</div>
-      <h2>Everything needed for<br>smart cloud delivery</h2>
+      <h2>Next-Generation DevSecOps:<br> Harness CI/CD with Automated Analysis Agents</h2>
       <p>Four AI agents handle review, security, observability, and risk — so your team ships with confidence.</p>
     </div>
 
