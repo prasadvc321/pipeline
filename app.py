@@ -360,10 +360,11 @@ def shell(title, active, body_html, extra_css="", extra_js=""):
     <span class="brand-mark">VS</span>
     <span>Veera Sir DevOps</span>
   </a>
+
   <ul class="nav-links">
-    <li><a href="/" {'class="active"' if active == 'home' else ''}>./home</a></li>
-    <li><a href="/about" {'class="active"' if active == 'about' else ''}>./about</a></li>
-    <li><a href="/contact" {'class="active"' if active == 'contact' else ''}>./contact</a></li>
+    <li><a href="/" {'class="active"' if active == 'home' else ''}>Home</a></li>
+    <li><a href="/about" {'class="active"' if active == 'about' else ''}>About</a></li>
+    <li><a href="/contact" {'class="active"' if active == 'contact' else ''}>Contact</a></li>
   </ul>
 </nav>
 
