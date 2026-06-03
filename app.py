@@ -336,10 +336,10 @@ document.querySelectorAll('[data-type]').forEach(el => {
 def shell(title, active, body_html, extra_css="", extra_js=""):
     active_map = {"home": 0, "about": 1, "contact": 2}
     links = [
-        ('<a href="/">./home</a>', 'home'),
-        ('<a href="/about">./about</a>', 'about'),
-        ('<a href="/contact">./contact</a>', 'contact'),
-    ]
+    ('<a href="/">Home</a>', 'home'),
+    ('<a href="/about">About</a>', 'about'),
+    ('<a href="/contact">Contact</a>', 'contact'),
+  ]
     nav_items = ""
     for label, key in links:
         cls = ' class="active"' if active == key else ''
