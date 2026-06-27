@@ -8,7 +8,6 @@ permissions:
 
 env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
 
 jobs:
   deploy:
@@ -21,7 +20,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: 🔐 Setup SSH
-      uses: webfactory/ssh-agent@v0.8.0
+      uses: webfactory/ssh-agent@v0.9.0
       with:
         ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
@@ -34,7 +33,9 @@ jobs:
       run: |
         pip install -r requirements.txt
 
-    # ---------------- AI GATES ----------------
+    ##################################################
+    # AI QUALITY GATES
+    ##################################################
 
     - name: 🤖 AI Code Review Agent
       run: |
@@ -49,7 +50,9 @@ jobs:
       run: |
         python ai_agents/deployment_risk_agent.py
 
-    # ---------------- BACKUP ----------------
+    ##################################################
+    # BACKUP CURRENT VERSION
+    ##################################################
 
     - name: 💾 Backup Existing Deployment
       run: |
@@ -61,16 +64,18 @@ jobs:
           fi
         '
 
-    # ---------------- DEPLOY ----------------
+    ##################################################
+    # DEPLOY APPLICATION
+    ##################################################
 
-    - name: 🚚 Upload Website
+    - name: 🚚 Upload Website to EC2
       run: |
         ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
           mkdir -p ~/website
         '
 
         scp -o StrictHostKeyChecking=no -r * \
-        ec2-user@${{ secrets.EC2_HOST }}:~/website/
+          ec2-user@${{ secrets.EC2_HOST }}:~/website/
 
     - name: 🐍 Install Dependencies on EC2
       run: |
@@ -105,20 +110,26 @@ jobs:
           sleep 10
         '
 
-    # ---------------- DEPLOYMENT GATE ----------------
+    ##################################################
+    # DEPLOYMENT VERIFICATION
+    ##################################################
 
     - name: 🔍 Health Check
       run: |
         curl --fail http://${{ secrets.EC2_HOST }}:5000/health
 
-    # ---------------- SUCCESS ----------------
+    ##################################################
+    # SUCCESS
+    ##################################################
 
     - name: ✅ Deployment Successful
       if: success()
       run: |
         echo "Deployment completed successfully."
 
-    # ---------------- FAILURE HANDLING ----------------
+    ##################################################
+    # FAILURE HANDLING
+    ##################################################
 
     - name: 📄 AI Log Analysis Agent
       if: failure()
@@ -127,12 +138,11 @@ jobs:
           cd ~/website
 
           export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
-          export GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
 
-          python3 ai_agents/log_analysis_agent.py
+          python3 ai_agents/log_analysis_agent.py || true
         '
 
-    - name: 🔁 Rollback
+    - name: 🔁 Rollback to Previous Version
       if: failure()
       run: |
         ssh ec2-user@${{ secrets.EC2_HOST }} '
@@ -165,7 +175,7 @@ jobs:
           echo "Rollback completed successfully."
         '
 
-    - name: 📢 Deployment Failed
+    - name: ❌ Deployment Failed
       if: failure()
       run: |
-        echo "Deployment failed and rollback was executed."
+        echo "Deployment failed and rollback executed."
