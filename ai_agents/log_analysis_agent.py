@@ -1,4 +1,3 @@
-```python
 import os
 import re
 
@@ -147,4 +146,3 @@ fail_if_matches(
 )
 
 print("AI Log Analysis Agent gate passed.")
-```
