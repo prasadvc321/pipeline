@@ -44,11 +44,16 @@ log_blocking_patterns = [
     r"fatal runtime error",
 ]
 
-fail_if_matches(
-    "Runtime Log Gate",
-    recent_logs.lower(),
-    log_blocking_patterns
-)
+runtime_error_detected = False
+
+try:
+    fail_if_matches(
+        "Runtime Log Gate",
+        recent_logs.lower(),
+        log_blocking_patterns
+    )
+except SystemExit:
+    runtime_error_detected = True
 
 # -------------------------------------------------------
 # AI Root Cause Analysis
