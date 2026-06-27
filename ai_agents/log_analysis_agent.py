@@ -215,6 +215,10 @@ response = ask_ai(prompt)
 
 print(response)
 
+# Save AI report for email/artifacts
+with open("ai_report.txt", "w", encoding="utf-8") as f:
+    f.write(response)
+
 # -------------------------------------------------------
 # Validate AI response format
 # -------------------------------------------------------
