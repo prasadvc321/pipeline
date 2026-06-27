@@ -1,271 +1,271 @@
-name: 🚀 AI Website Deployment Pipeline
+# name: 🚀 AI Website Deployment Pipeline
 
-on:
-  workflow_dispatch:
+# on:
+#   workflow_dispatch:
 
-permissions:
-  contents: read
+# permissions:
+#   contents: read
 
-env:
-  GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+# env:
+#   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+# jobs:
+#   deploy:
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 20
 
-    steps:
+#     steps:
 
-    ##################################################
-    # SOURCE CODE
-    ##################################################
+#     ##################################################
+#     # SOURCE CODE
+#     ##################################################
 
-    - name: 📦 Checkout Code
-      uses: actions/checkout@v4
+#     - name: 📦 Checkout Code
+#       uses: actions/checkout@v4
 
-    - name: 🔐 Setup SSH
-      uses: webfactory/ssh-agent@v0.9.0
-      with:
-        ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
+#     - name: 🔐 Setup SSH
+#       uses: webfactory/ssh-agent@v0.9.0
+#       with:
+#         ssh-private-key: ${{ secrets.EC2_SSH_KEY }}
 
-    - name: 🐍 Setup Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: "3.11"
-        cache: "pip"
+#     - name: 🐍 Setup Python
+#       uses: actions/setup-python@v5
+#       with:
+#         python-version: "3.11"
+#         cache: "pip"
 
-    - name: 📦 Install Local Dependencies
-      run: |
-        pip install -r requirements.txt
+#     - name: 📦 Install Local Dependencies
+#       run: |
+#         pip install -r requirements.txt
 
-    ##################################################
-    # AI QUALITY GATES
-    ##################################################
+#     ##################################################
+#     # AI QUALITY GATES
+#     ##################################################
 
-    - name: 🤖 AI Code Review Agent
-      run: |
-        python ai_agents/code_review_agent.py
+#     - name: 🤖 AI Code Review Agent
+#       run: |
+#         python ai_agents/code_review_agent.py
 
-    - name: 🔐 AI Security Agent
-      run: |
-        python ai_agents/security_agent.py
+#     - name: 🔐 AI Security Agent
+#       run: |
+#         python ai_agents/security_agent.py
 
-    - name: 🧠 AI Deployment Advisory Agent
-      continue-on-error: true
-      run: |
-        python ai_agents/deployment_risk_agent.py
+#     - name: 🧠 AI Deployment Advisory Agent
+#       continue-on-error: true
+#       run: |
+#         python ai_agents/deployment_risk_agent.py
 
-    ##################################################
-    # BACKUP CURRENT DEPLOYMENT
-    ##################################################
+#     ##################################################
+#     # BACKUP CURRENT DEPLOYMENT
+#     ##################################################
 
-    - name: 💾 Backup Existing Deployment
-      run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
-          rm -rf ~/website_backup
+#     - name: 💾 Backup Existing Deployment
+#       run: |
+#         ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
+#           rm -rf ~/website_backup
 
-          if [ -d ~/website ]; then
-            cp -r ~/website ~/website_backup
-          fi
-        '
+#           if [ -d ~/website ]; then
+#             cp -r ~/website ~/website_backup
+#           fi
+#         '
 
-    ##################################################
-    # DEPLOY NEW VERSION
-    ##################################################
+#     ##################################################
+#     # DEPLOY NEW VERSION
+#     ##################################################
 
-    - name: 🚚 Upload Website to EC2
-      run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
-          mkdir -p ~/website
-        '
+#     - name: 🚚 Upload Website to EC2
+#       run: |
+#         ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
+#           mkdir -p ~/website
+#         '
 
-        scp -o StrictHostKeyChecking=no -r * \
-          ec2-user@${{ secrets.EC2_HOST }}:~/website/
+#         scp -o StrictHostKeyChecking=no -r * \
+#           ec2-user@${{ secrets.EC2_HOST }}:~/website/
 
-    - name: 🐍 Install Dependencies on EC2
-      run: |
-        ssh ec2-user@${{ secrets.EC2_HOST }} '
-          sudo yum install -y python3 python3-pip
+#     - name: 🐍 Install Dependencies on EC2
+#       run: |
+#         ssh ec2-user@${{ secrets.EC2_HOST }} '
+#           sudo yum install -y python3 python3-pip
 
-          cd ~/website
+#           cd ~/website
 
-          pip3 install --user -r requirements.txt
-        '
+#           pip3 install --user -r requirements.txt
+#         '
 
-    ##################################################
-    # STOP OLD APPLICATION
-    ##################################################
+#     ##################################################
+#     # STOP OLD APPLICATION
+#     ##################################################
 
-    - name: 🛑 Stop Existing Application
-      run: |
-        ssh ec2-user@${{ secrets.EC2_HOST }} '
-          PID=$(lsof -t -i:5000 || true)
+#     - name: 🛑 Stop Existing Application
+#       run: |
+#         ssh ec2-user@${{ secrets.EC2_HOST }} '
+#           PID=$(lsof -t -i:5000 || true)
 
-          if [ ! -z "$PID" ]; then
-            kill -9 $PID
-          fi
-        '
+#           if [ ! -z "$PID" ]; then
+#             kill -9 $PID
+#           fi
+#         '
 
-    ##################################################
-    # START NEW APPLICATION
-    ##################################################
+#     ##################################################
+#     # START NEW APPLICATION
+#     ##################################################
 
-    - name: 🚀 Start Application
-      run: |
-        ssh ec2-user@${{ secrets.EC2_HOST }} '
-          cd ~/website
+#     - name: 🚀 Start Application
+#       run: |
+#         ssh ec2-user@${{ secrets.EC2_HOST }} '
+#           cd ~/website
 
-          nohup python3 -u app.py \
-            > output.log \
-            2> error.log \
-            < /dev/null &
+#           nohup python3 -u app.py \
+#             > output.log \
+#             2> error.log \
+#             < /dev/null &
 
-          sleep 10
-        '
+#           sleep 10
+#         '
 
-    ##################################################
-    # STARTUP VALIDATION
-    ##################################################
+#     ##################################################
+#     # STARTUP VALIDATION
+#     ##################################################
 
-    - name: 🔎 Verify Application Started
-      run: |
-        ssh ec2-user@${{ secrets.EC2_HOST }} '
-          if ! lsof -i:5000 > /dev/null; then
-            echo "Application failed to start"
+#     - name: 🔎 Verify Application Started
+#       run: |
+#         ssh ec2-user@${{ secrets.EC2_HOST }} '
+#           if ! lsof -i:5000 > /dev/null; then
+#             echo "Application failed to start"
 
-            echo "===== OUTPUT LOG ====="
-            cat output.log || true
+#             echo "===== OUTPUT LOG ====="
+#             cat output.log || true
 
-            echo "===== ERROR LOG ====="
-            cat error.log || true
+#             echo "===== ERROR LOG ====="
+#             cat error.log || true
 
-            exit 1
-          fi
-        '
+#             exit 1
+#           fi
+#         '
 
-    ##################################################
-    # HEALTH CHECK
-    ##################################################
+#     ##################################################
+#     # HEALTH CHECK
+#     ##################################################
 
-    - name: 🔍 Health Check
-      run: |
-        curl --fail http://${{ secrets.EC2_HOST }}:5000/health
+#     - name: 🔍 Health Check
+#       run: |
+#         curl --fail http://${{ secrets.EC2_HOST }}:5000/health
 
-    ##################################################
-    # SUCCESS
-    ##################################################
+#     ##################################################
+#     # SUCCESS
+#     ##################################################
 
-    - name: ✅ Deployment Successful
-      if: success()
-      run: |
-        echo "Deployment completed successfully."
+#     - name: ✅ Deployment Successful
+#       if: success()
+#       run: |
+#         echo "Deployment completed successfully."
 
-    ##################################################
-    # FAILURE ANALYSIS
-    ##################################################
+#     ##################################################
+#     # FAILURE ANALYSIS
+#     ##################################################
 
-    ##################################################
-# AI LOG ANALYSIS (ALWAYS RUN)
-##################################################
+#     ##################################################
+# # AI LOG ANALYSIS (ALWAYS RUN)
+# ##################################################
 
-    - name: 📄 AI Log Analysis Agent
-      if: success() || failure()
-      run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-        cd ~/website
+#     - name: 📄 AI Log Analysis Agent
+#       if: success() || failure()
+#       run: |
+#         ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+#         cd ~/website
     
-        export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+#         export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
     
-        echo "========================================"
-        echo "Running AI Log Analysis"
-        echo "========================================"
+#         echo "========================================"
+#         echo "Running AI Log Analysis"
+#         echo "========================================"
     
-        python3 ai_agents/log_analysis_agent.py
+#         python3 ai_agents/log_analysis_agent.py
     
-        echo ""
-        echo "========================================"
-        echo "AI REPORT"
-        echo "========================================"
+#         echo ""
+#         echo "========================================"
+#         echo "AI REPORT"
+#         echo "========================================"
     
-        cat ai_report.txt || true
-        EOF
+#         cat ai_report.txt || true
+#         EOF
 
-    - name: 📥 Download AI Report
-      if: success() || failure()
-      run: |
-        scp -o StrictHostKeyChecking=no \
-          ec2-user@${{ secrets.EC2_HOST }}:~/website/ai_report.txt \
-        .
-    - name: 📧 Send AI Deployment Report
-      if: success() || failure()
-      uses: dawidd6/action-send-mail@v3
-      with:
-        server_address: smtp.gmail.com
-        server_port: 465
-        secure: true
-        username: ${{ secrets.EMAIL_USERNAME }}
-        password: ${{ secrets.EMAIL_PASSWORD }}
-        subject: AI Deployment Report - ${{ github.repository }}
-        to: ${{ secrets.EMAIL_TO }}
-        from: GitHub Actions
+#     - name: 📥 Download AI Report
+#       if: success() || failure()
+#       run: |
+#         scp -o StrictHostKeyChecking=no \
+#           ec2-user@${{ secrets.EC2_HOST }}:~/website/ai_report.txt \
+#         .
+#     - name: 📧 Send AI Deployment Report
+#       if: success() || failure()
+#       uses: dawidd6/action-send-mail@v3
+#       with:
+#         server_address: smtp.gmail.com
+#         server_port: 465
+#         secure: true
+#         username: ${{ secrets.EMAIL_USERNAME }}
+#         password: ${{ secrets.EMAIL_PASSWORD }}
+#         subject: AI Deployment Report - ${{ github.repository }}
+#         to: ${{ secrets.EMAIL_TO }}
+#         from: GitHub Actions
     
-        body: |
-          Repository : ${{ github.repository }}
-          Branch     : ${{ github.ref_name }}
-          Commit     : ${{ github.sha }}
-          Status     : ${{ job.status }}
+#         body: |
+#           Repository : ${{ github.repository }}
+#           Branch     : ${{ github.ref_name }}
+#           Commit     : ${{ github.sha }}
+#           Status     : ${{ job.status }}
     
-          The AI deployment report is attached.
+#           The AI deployment report is attached.
     
-        attachments: ai_report.txt
-    ##################################################
-    # ROLLBACK
-    ##################################################
+#         attachments: ai_report.txt
+#     ##################################################
+#     # ROLLBACK
+#     ##################################################
 
-    - name: 🔁 Rollback to Previous Version
-      if: failure()
-      run: |
-        ssh ec2-user@${{ secrets.EC2_HOST }} '
+#     - name: 🔁 Rollback to Previous Version
+#       if: failure()
+#       run: |
+#         ssh ec2-user@${{ secrets.EC2_HOST }} '
 
-          echo "Deployment failed. Starting rollback..."
+#           echo "Deployment failed. Starting rollback..."
 
-          PID=$(lsof -t -i:5000 || true)
+#           PID=$(lsof -t -i:5000 || true)
 
-          if [ ! -z "$PID" ]; then
-            kill -9 $PID
-          fi
+#           if [ ! -z "$PID" ]; then
+#             kill -9 $PID
+#           fi
 
-          mv ~/website ~/failed_release_$(date +%s) || true
+#           mv ~/website ~/failed_release_$(date +%s) || true
 
-          if [ -d ~/website_backup ]; then
-            mv ~/website_backup ~/website
-          fi
+#           if [ -d ~/website_backup ]; then
+#             mv ~/website_backup ~/website
+#           fi
 
-          cd ~/website
+#           cd ~/website
 
-          nohup python3 -u app.py \
-            > output.log \
-            2> error.log \
-            < /dev/null &
+#           nohup python3 -u app.py \
+#             > output.log \
+#             2> error.log \
+#             < /dev/null &
 
-          sleep 10
+#           sleep 10
 
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            http://localhost:5000/health)
+#           HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+#             http://localhost:5000/health)
 
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ Rollback successful"
-          else
-            echo "❌ Rollback failed"
-            exit 1
-          fi
-        '
+#           if [ "$HTTP_CODE" = "200" ]; then
+#             echo "✅ Rollback successful"
+#           else
+#             echo "❌ Rollback failed"
+#             exit 1
+#           fi
+#         '
 
-    ##################################################
-    # FINAL STATUS
-    ##################################################
+#     ##################################################
+#     # FINAL STATUS
+#     ##################################################
 
-    - name: ❌ Deployment Failed
-      if: failure()
-      run: |
-        echo "Deployment failed and rollback executed."
+#     - name: ❌ Deployment Failed
+#       if: failure()
+#       run: |
+#         echo "Deployment failed and rollback executed."
