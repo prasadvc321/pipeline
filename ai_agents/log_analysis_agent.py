@@ -53,55 +53,156 @@ fail_if_matches(
 # -------------------------------------------------------
 # AI Root Cause Analysis
 # -------------------------------------------------------
+# prompt = f"""
+# Analyze the following application logs.
+
+# Provide:
+
+# - Errors
+# - Warnings
+# - Root Cause
+# - Deployment Issues
+# - Recommended Fix
+
+# Decision Rules:
+
+# Return PIPELINE_STATUS: FAIL only if:
+# - Application crashed
+# - Unhandled exception occurred
+# - Startup failed
+# - Server failed to start
+# - Port binding failed
+# - Requests cannot be served
+
+# Return PIPELINE_STATUS: PASS if:
+# - Application started successfully
+# - Only warnings are present
+# - Deprecation warnings exist
+# - FutureWarnings exist
+
+# Return exactly in the following format:
+
+# Errors:
+# ...
+
+# Warnings:
+# ...
+
+# Root Cause:
+# ...
+
+# Deployment Issues:
+# ...
+
+# Recommended Fix:
+# ...
+
+# PIPELINE_STATUS: PASS
+# or
+# PIPELINE_STATUS: FAIL
+
+# Logs:
+# {recent_logs}
+# """
+
+
 prompt = f"""
-Analyze the following application logs.
+You are a Senior DevOps Engineer, Site Reliability Engineer (SRE), and Python expert.
 
-Provide:
+Analyze the deployment logs below.
 
-- Errors
-- Warnings
-- Root Cause
-- Deployment Issues
-- Recommended Fix
+Your job is to explain the deployment result in simple, human-friendly language.
 
-Decision Rules:
+If the deployment SUCCEEDED:
+- Explain what happened during startup.
+- Mention each successful step.
+- Mention warnings if present.
+- Explain whether users can access the application.
+- Give a deployment health score (0-100).
+- Give confidence.
+- Suggest optional improvements.
 
-Return PIPELINE_STATUS: FAIL only if:
-- Application crashed
-- Unhandled exception occurred
-- Startup failed
-- Server failed to start
-- Port binding failed
-- Requests cannot be served
+If the deployment FAILED:
+- Identify the exact error.
+- Explain what the error means in simple English.
+- Identify the file name.
+- Identify the line number if available.
+- Explain why the application stopped.
+- Explain the impact on users.
+- Explain the root cause.
+- Give step-by-step instructions to fix it.
+- Include an example fix if possible.
+- Give a deployment health score (0-100).
+- Give confidence.
 
-Return PIPELINE_STATUS: PASS if:
-- Application started successfully
-- Only warnings are present
-- Deprecation warnings exist
-- FutureWarnings exist
+Never simply repeat the Python traceback.
 
-Return exactly in the following format:
+Instead explain the error like you are helping a junior developer.
 
-Errors:
-...
+For common errors, explain them naturally:
 
-Warnings:
-...
+NameError
+→ A variable or name was used before it was created.
+
+ModuleNotFoundError
+→ A required Python package is missing.
+
+ImportError
+→ Python found the package but could not import it correctly.
+
+SyntaxError
+→ The code contains invalid Python syntax.
+
+PermissionError
+→ The application does not have permission to access a required file or resource.
+
+Connection Refused
+→ The application could not connect to another service.
+
+Address already in use
+→ Another application is already using the required port.
+
+Traceback
+→ Explain the first real error instead of the traceback itself.
+
+Return EXACTLY this format:
+
+============================================================
+
+Deployment Status:
+SUCCESS or FAILED
+
+Application Summary:
+
+Execution Flow:
+
+Error Type:
+
+Error Details:
+
+What Happened?
 
 Root Cause:
-...
 
-Deployment Issues:
-...
+Impact:
 
-Recommended Fix:
-...
+How to Fix:
 
-PIPELINE_STATUS: PASS
-or
-PIPELINE_STATUS: FAIL
+Example Fix:
+
+Warnings:
+
+Health Score:
+
+Confidence:
+
+PIPELINE_STATUS:
+PASS or FAIL
+
+============================================================
 
 Logs:
+
 {recent_logs}
 """
 
