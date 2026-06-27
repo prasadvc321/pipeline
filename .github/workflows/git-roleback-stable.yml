@@ -169,33 +169,29 @@ jobs:
 ##################################################
 
     - name: 📄 AI Log Analysis Agent
-      if: always()
+      if: success() || failure()
       run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
-          cd ~/website
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
+        cd ~/website
     
-          export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+        export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
     
-          echo "========================================"
-          echo "Downloading Application Logs"
-          echo "========================================"
+        echo "========================================"
+        echo "Downloading Application Logs"
+        echo "========================================"
     
-          echo ""
-          echo "===== output.log ====="
-          cat output.log 2>/dev/null || echo "output.log not found"
+        echo "===== output.log ====="
+        cat output.log 2>/dev/null || echo "output.log not found"
     
-          echo ""
-          echo "===== error.log ====="
-          cat error.log 2>/dev/null || echo "error.log not found"
+        echo "===== error.log ====="
+        cat error.log 2>/dev/null || echo "error.log not found"
     
-          echo ""
-          echo "========================================"
-          echo "Running AI Log Analysis..."
-          echo "========================================"
+        echo "========================================"
+        echo "Running AI Log Analysis..."
+        echo "========================================"
     
-          python3 ai_agents/log_analysis_agent.py
-        '
-        '
+        python3 ai_agents/log_analysis_agent.py
+        EOF
 
     ##################################################
     # ROLLBACK
