@@ -77,7 +77,7 @@ jobs:
       run: |
         ssh ec2-user@${{ secrets.EC2_HOST }} '
           cd ~/website
-          nohup python3 app.py > output.log 2> error.log < /dev/null &
+          nohup python3 -u app.py > output.log 2> error.log < /dev/null &
           sleep 10
           tail -n 20 output.log
         '
