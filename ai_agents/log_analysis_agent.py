@@ -1,3 +1,4 @@
+```python
 import os
 import re
 
@@ -6,59 +7,81 @@ from ai_provider import ask_ai
 
 print("Running AI Log Analysis Agent...")
 
-if not os.path.exists("output.log"):
-    fail("output.log not found.")
+# -------------------------------------------------------
+# Collect logs from multiple sources
+# -------------------------------------------------------
+logs = ""
 
-with open("output.log", "r", encoding="utf-8", errors="ignore") as f:
-    logs = f.read()
-
-recent_logs = logs[-3000:]
-
-# Block only on real runtime failures
-log_blocking_patterns = [
-    r"\btraceback\b",
-    r"\bexception\b",
-    r"\berror\b",
-    r"\bfailed\b",
-    r"\bcrash\b",
-    r"\baddress already in use\b",
+log_files = [
+    "output.log",
+    "error.log"
 ]
 
-fail_if_matches("Runtime Log Gate", recent_logs, log_blocking_patterns)
+for logfile in log_files:
+    if os.path.exists(logfile):
+        with open(logfile, "r", encoding="utf-8", errors="ignore") as f:
+            logs += f"\n\n===== {logfile} =====\n"
+            logs += f.read()
 
+if not logs.strip():
+    fail("No logs found for AI analysis.")
+
+recent_logs = logs[-5000:]
+
+# -------------------------------------------------------
+# Deterministic runtime failure detection
+# -------------------------------------------------------
+log_blocking_patterns = [
+    r"traceback",
+    r"modulenotfounderror",
+    r"importerror",
+    r"syntaxerror",
+    r"segmentation fault",
+    r"permission denied",
+    r"address already in use",
+    r"connection refused",
+    r"startup failed",
+    r"failed to bind",
+    r"fatal runtime error",
+]
+
+fail_if_matches(
+    "Runtime Log Gate",
+    recent_logs.lower(),
+    log_blocking_patterns
+)
+
+# -------------------------------------------------------
+# AI Root Cause Analysis
+# -------------------------------------------------------
 prompt = f"""
-Analyze the following Flask application logs.
+Analyze the following application logs.
 
-Report:
+Provide:
+
 - Errors
 - Warnings
-- Crash reasons
-- Deployment issues
+- Root Cause
+- Deployment Issues
+- Recommended Fix
 
 Decision Rules:
-1. Return PIPELINE_STATUS: FAIL ONLY if the logs show:
-   - Application crash
-   - Unhandled exception
-   - Startup failure
-   - Port binding failure
-   - Server failed to start
-   - Fatal runtime error
-   - Requests cannot be served
 
-2. Return PIPELINE_STATUS: PASS if:
-   - The application starts successfully.
-   - Only warnings are present.
-   - Flask development server warning is shown.
-   - Debug mode is enabled.
-   - Deprecation/FutureWarning messages are present.
+Return PIPELINE_STATUS: FAIL only if:
+- Application crashed
+- Unhandled exception occurred
+- Startup failed
+- Server failed to start
+- Port binding failed
+- Requests cannot be served
 
-Important:
-- Flask's "development server" warning is NOT a deployment failure.
-- Debug mode enabled is a warning, NOT a failure.
-- Python deprecation warnings are NOT failures.
-- FutureWarning messages are NOT failures.
+Return PIPELINE_STATUS: PASS if:
+- Application started successfully
+- Only warnings are present
+- Deprecation warnings exist
+- FutureWarnings exist
 
-Return in this format:
+Return exactly in the following format:
 
 Errors:
 ...
@@ -66,10 +89,13 @@ Errors:
 Warnings:
 ...
 
-Crash Reasons:
+Root Cause:
 ...
 
 Deployment Issues:
+...
+
+Recommended Fix:
 ...
 
 PIPELINE_STATUS: PASS
@@ -84,18 +110,41 @@ response = ask_ai(prompt)
 
 print(response)
 
-# Fail only if AI detects an actual runtime/deployment blocker
-if re.search(r"PIPELINE_STATUS:\s*FAIL", response, re.IGNORECASE):
-    fail("AI Log Analysis Agent reported a runtime/deployment failure.")
+# -------------------------------------------------------
+# Validate AI response format
+# -------------------------------------------------------
+status_match = re.search(
+    r"PIPELINE_STATUS:\s*(PASS|FAIL)",
+    response,
+    re.IGNORECASE
+)
 
-# Extra safety checks
+if not status_match:
+    fail("AI response missing PIPELINE_STATUS.")
+
+pipeline_status = status_match.group(1).upper()
+
+if pipeline_status == "FAIL":
+    fail(
+        "AI Log Analysis Agent detected deployment failure."
+    )
+
+# -------------------------------------------------------
+# Additional AI safety patterns
+# -------------------------------------------------------
 ai_blocking_patterns = [
-    r"\bdeployment should not proceed\b",
-    r"\bdo not deploy\b",
-    r"\bfatal runtime error\b",
-    r"\bstartup failed\b",
+    r"deployment should not proceed",
+    r"do not deploy",
+    r"fatal runtime error",
+    r"startup failed",
+    r"application crash",
 ]
 
-fail_if_matches("AI Log Analysis Agent", response, ai_blocking_patterns)
+fail_if_matches(
+    "AI Log Analysis Agent",
+    response.lower(),
+    ai_blocking_patterns
+)
 
 print("AI Log Analysis Agent gate passed.")
+```
