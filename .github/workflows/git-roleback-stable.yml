@@ -169,13 +169,9 @@ jobs:
       run: |
         echo "Deployment completed successfully."
 
+     ##################################################
+    # AI LOG ANALYSIS (ALWAYS RUN)
     ##################################################
-    # FAILURE ANALYSIS
-    ##################################################
-
-    ##################################################
-# AI LOG ANALYSIS (ALWAYS RUN)
-##################################################
 
     - name: 📄 AI Log Analysis Agent
       if: success() || failure()
@@ -198,7 +194,11 @@ jobs:
     
         cat ai_report.txt || true
         EOF
-
+        
+    ##################################################
+    # AI REPORT DOWNLOAD AND SEND MAIL
+    ##################################################
+    
     - name: 📥 Download AI Report
       if: success() || failure()
       run: |
@@ -227,6 +227,7 @@ jobs:
           The AI deployment report is attached.
     
         attachments: ai_report.txt
+        
     ##################################################
     # ROLLBACK
     ##################################################
