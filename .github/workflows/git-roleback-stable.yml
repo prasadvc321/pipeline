@@ -93,7 +93,7 @@ jobs:
 
     - name: 🔍 Health Check
       run: |
-        curl --fail http://${{ secrets.EC2_HOST }}:5000/health
+        curl --fail http://${{ secrets.EC2_HOST }}:5000/healthhh
 
     # ---------------- SUCCESS: SAVE STABLE VERSION ----------------
 
