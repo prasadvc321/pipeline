@@ -177,22 +177,47 @@ jobs:
         export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
     
         echo "========================================"
-        echo "Downloading Application Logs"
-        echo "========================================"
-    
-        echo "===== output.log ====="
-        cat output.log 2>/dev/null || echo "output.log not found"
-    
-        echo "===== error.log ====="
-        cat error.log 2>/dev/null || echo "error.log not found"
-    
-        echo "========================================"
-        echo "Running AI Log Analysis..."
+        echo "Running AI Log Analysis"
         echo "========================================"
     
         python3 ai_agents/log_analysis_agent.py
+    
+        echo ""
+        echo "========================================"
+        echo "AI REPORT"
+        echo "========================================"
+    
+        cat ai_report.txt || true
         EOF
 
+    - name: 📥 Download AI Report
+      if: success() || failure()
+      run: |
+        scp -o StrictHostKeyChecking=no \
+          ec2-user@${{ secrets.EC2_HOST }}:~/website/ai_report.txt \
+        .
+    - name: 📧 Send AI Deployment Report
+      if: success() || failure()
+      uses: dawidd6/action-send-mail@v3
+      with:
+        server_address: smtp.gmail.com
+        server_port: 465
+        secure: true
+        username: ${{ secrets.EMAIL_USERNAME }}
+        password: ${{ secrets.EMAIL_PASSWORD }}
+        subject: AI Deployment Report - ${{ github.repository }}
+        to: ${{ secrets.EMAIL_TO }}
+        from: GitHub Actions
+    
+        body: |
+          Repository : ${{ github.repository }}
+          Branch     : ${{ github.ref_name }}
+          Commit     : ${{ github.sha }}
+          Status     : ${{ job.status }}
+    
+          The AI deployment report is attached.
+    
+        attachments: ai_report.txt
     ##################################################
     # ROLLBACK
     ##################################################
