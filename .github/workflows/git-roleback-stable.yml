@@ -16,6 +16,10 @@ jobs:
 
     steps:
 
+    ##################################################
+    # SOURCE CODE
+    ##################################################
+
     - name: 📦 Checkout Code
       uses: actions/checkout@v4
 
@@ -28,6 +32,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: "3.11"
+        cache: "pip"
 
     - name: 📦 Install Local Dependencies
       run: |
@@ -51,7 +56,7 @@ jobs:
         python ai_agents/deployment_risk_agent.py
 
     ##################################################
-    # BACKUP CURRENT VERSION
+    # BACKUP CURRENT DEPLOYMENT
     ##################################################
 
     - name: 💾 Backup Existing Deployment
@@ -65,7 +70,7 @@ jobs:
         '
 
     ##################################################
-    # DEPLOY APPLICATION
+    # DEPLOY NEW VERSION
     ##################################################
 
     - name: 🚚 Upload Website to EC2
@@ -84,8 +89,12 @@ jobs:
 
           cd ~/website
 
-          pip3 install -r requirements.txt
+          pip3 install --user -r requirements.txt
         '
+
+    ##################################################
+    # STOP OLD APPLICATION
+    ##################################################
 
     - name: 🛑 Stop Existing Application
       run: |
@@ -96,6 +105,10 @@ jobs:
             kill -9 $PID
           fi
         '
+
+    ##################################################
+    # START NEW APPLICATION
+    ##################################################
 
     - name: 🚀 Start Application
       run: |
@@ -111,12 +124,32 @@ jobs:
         '
 
     ##################################################
-    # DEPLOYMENT VERIFICATION
+    # STARTUP VALIDATION
+    ##################################################
+
+    - name: 🔎 Verify Application Started
+      run: |
+        ssh ec2-user@${{ secrets.EC2_HOST }} '
+          if ! lsof -i:5000 > /dev/null; then
+            echo "Application failed to start"
+
+            echo "===== OUTPUT LOG ====="
+            cat output.log || true
+
+            echo "===== ERROR LOG ====="
+            cat error.log || true
+
+            exit 1
+          fi
+        '
+
+    ##################################################
+    # HEALTH CHECK
     ##################################################
 
     - name: 🔍 Health Check
       run: |
-        curl --fail http://${{ secrets.EC2_HOST }}:5000/healthh
+        curl --fail http://${{ secrets.EC2_HOST }}:5000/health
 
     ##################################################
     # SUCCESS
@@ -128,7 +161,7 @@ jobs:
         echo "Deployment completed successfully."
 
     ##################################################
-    # FAILURE HANDLING
+    # FAILURE ANALYSIS
     ##################################################
 
     - name: 📄 AI Log Analysis Agent
@@ -141,6 +174,10 @@ jobs:
 
           python3 ai_agents/log_analysis_agent.py || true
         '
+
+    ##################################################
+    # ROLLBACK
+    ##################################################
 
     - name: 🔁 Rollback to Previous Version
       if: failure()
@@ -155,7 +192,7 @@ jobs:
             kill -9 $PID
           fi
 
-          rm -rf ~/website
+          mv ~/website ~/failed_release_$(date +%s) || true
 
           if [ -d ~/website_backup ]; then
             mv ~/website_backup ~/website
@@ -170,10 +207,20 @@ jobs:
 
           sleep 10
 
-          curl --fail http://localhost:5000/health
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            http://localhost:5000/health)
 
-          echo "Rollback completed successfully."
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "✅ Rollback successful"
+          else
+            echo "❌ Rollback failed"
+            exit 1
+          fi
         '
+
+    ##################################################
+    # FINAL STATUS
+    ##################################################
 
     - name: ❌ Deployment Failed
       if: failure()
