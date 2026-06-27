@@ -164,15 +164,37 @@ jobs:
     # FAILURE ANALYSIS
     ##################################################
 
+    ##################################################
+# AI LOG ANALYSIS (ALWAYS RUN)
+##################################################
+
     - name: 📄 AI Log Analysis Agent
-      if: failure()
+      if: always()
       run: |
-        ssh ec2-user@${{ secrets.EC2_HOST }} '
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
           cd ~/website
-
+    
           export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
-
-          python3 ai_agents/log_analysis_agent.py || true
+    
+          echo "========================================"
+          echo "Downloading Application Logs"
+          echo "========================================"
+    
+          echo ""
+          echo "===== output.log ====="
+          cat output.log 2>/dev/null || echo "output.log not found"
+    
+          echo ""
+          echo "===== error.log ====="
+          cat error.log 2>/dev/null || echo "error.log not found"
+    
+          echo ""
+          echo "========================================"
+          echo "Running AI Log Analysis..."
+          echo "========================================"
+    
+          python3 ai_agents/log_analysis_agent.py
+        '
         '
 
     ##################################################
