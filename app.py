@@ -1,7 +1,8 @@
 from flask import Flask, jsonify
 
 app = Flask(__name__)
-
+gfgfgxgx
+xvfxgxfdv
 # ─────────────────────────────────────────────
 #  Shared shell: header + animated background
 # ─────────────────────────────────────────────
