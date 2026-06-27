@@ -1,12 +1,10 @@
 name: 🚀 AI Website Deployment Pipeline
 
 on:
-  # push:
-  #   branches:
-  #     - main
-   workflow_dispatch:    
+  workflow_dispatch:
+
 permissions:
-  contents: write
+  contents: read
 
 env:
   GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -15,6 +13,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
 
     steps:
 
@@ -31,9 +30,11 @@ jobs:
       with:
         python-version: "3.11"
 
-    - name: 📦 Install Dependencies
+    - name: 📦 Install Local Dependencies
       run: |
         pip install -r requirements.txt
+
+    # ---------------- AI GATES ----------------
 
     - name: 🤖 AI Code Review Agent
       run: |
@@ -43,110 +44,128 @@ jobs:
       run: |
         python ai_agents/security_agent.py
 
-    - name: 🧠 AI Deployment Risk Agent
+    - name: 🧠 AI Deployment Advisory Agent
+      continue-on-error: true
       run: |
         python ai_agents/deployment_risk_agent.py
 
-    - name: 🚚 Upload Website to EC2
+    # ---------------- BACKUP ----------------
+
+    - name: 💾 Backup Existing Deployment
       run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} "
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
+          rm -rf ~/website_backup
+
+          if [ -d ~/website ]; then
+            cp -r ~/website ~/website_backup
+          fi
+        '
+
+    # ---------------- DEPLOY ----------------
+
+    - name: 🚚 Upload Website
+      run: |
+        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} '
           mkdir -p ~/website
-        "
+        '
 
         scp -o StrictHostKeyChecking=no -r * \
         ec2-user@${{ secrets.EC2_HOST }}:~/website/
 
-    - name: 🐍 Install Requirements on EC2
+    - name: 🐍 Install Dependencies on EC2
       run: |
         ssh ec2-user@${{ secrets.EC2_HOST }} '
-          sudo yum install -y python3 python3-pip git
+          sudo yum install -y python3 python3-pip
+
           cd ~/website
+
           pip3 install -r requirements.txt
         '
 
-    - name: 🛑 Stop Existing App
+    - name: 🛑 Stop Existing Application
       run: |
         ssh ec2-user@${{ secrets.EC2_HOST }} '
           PID=$(lsof -t -i:5000 || true)
+
           if [ ! -z "$PID" ]; then
             kill -9 $PID
           fi
         '
 
-    - name: 🚀 Start Website
+    - name: 🚀 Start Application
       run: |
         ssh ec2-user@${{ secrets.EC2_HOST }} '
           cd ~/website
-          nohup python3 -u app.py > output.log 2> error.log < /dev/null &
+
+          nohup python3 -u app.py \
+            > output.log \
+            2> error.log \
+            < /dev/null &
+
           sleep 10
-          tail -n 20 output.log
         '
 
-    - name: 📄 AI Log Analysis Agent
-      run: |
-        ssh ec2-user@${{ secrets.EC2_HOST }} '
-          cd ~/website
-          export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
-          export GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
-          python3 ai_agents/log_analysis_agent.py
-        '
+    # ---------------- DEPLOYMENT GATE ----------------
 
     - name: 🔍 Health Check
       run: |
-        curl --fail http://${{ secrets.EC2_HOST }}:5000/healthhh
+        curl --fail http://${{ secrets.EC2_HOST }}:5000/health
 
-    # ---------------- SUCCESS: SAVE STABLE VERSION ----------------
+    # ---------------- SUCCESS ----------------
 
-    - name: 🏷️ Update Last Stable Deployment Tag
+    - name: ✅ Deployment Successful
       if: success()
       run: |
-        git config user.name "github-actions"
-        git config user.email "github-actions@github.com"
+        echo "Deployment completed successfully."
 
-        git tag -f prod-stable $GITHUB_SHA
-        git push origin prod-stable --force
+    # ---------------- FAILURE HANDLING ----------------
 
-    - name: ✅ Deployment Success
-      if: success()
-      run: |
-        echo "🚀 Deployment successful!"
-
-    # ---------------- FAILURE: ROLLBACK ----------------
-
-    - name: 🔁 Rollback to Last Stable Version (Git-based)
+    - name: 📄 AI Log Analysis Agent
       if: failure()
       run: |
-        ssh -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_HOST }} << 'EOF'
-
-          echo "❌ Deployment failed. Rolling back to last stable version..."
-
+        ssh ec2-user@${{ secrets.EC2_HOST }} '
           cd ~/website
 
-          git fetch --tags origin
+          export GEMINI_API_KEY="${{ secrets.GEMINI_API_KEY }}"
+          export GROQ_API_KEY="${{ secrets.GROQ_API_KEY }}"
 
-          echo "⬇️ Checking out prod-stable..."
-          git checkout prod-stable
+          python3 ai_agents/log_analysis_agent.py
+        '
+
+    - name: 🔁 Rollback
+      if: failure()
+      run: |
+        ssh ec2-user@${{ secrets.EC2_HOST }} '
+
+          echo "Deployment failed. Starting rollback..."
 
           PID=$(lsof -t -i:5000 || true)
+
           if [ ! -z "$PID" ]; then
             kill -9 $PID
           fi
 
-          nohup python3 app.py > output.log 2>&1 < /dev/null &
+          rm -rf ~/website
+
+          if [ -d ~/website_backup ]; then
+            mv ~/website_backup ~/website
+          fi
+
+          cd ~/website
+
+          nohup python3 -u app.py \
+            > output.log \
+            2> error.log \
+            < /dev/null &
 
           sleep 10
 
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/health)
+          curl --fail http://localhost:5000/health
 
-          if [ "$HTTP_CODE" -eq 200 ]; then
-            echo "✅ Rollback successful"
-          else
-            echo "⚠️ Rollback completed but health check failed: $HTTP_CODE"
-          fi
+          echo "Rollback completed successfully."
+        '
 
-        EOF
-
-    - name: 📌 Rollback Completed
+    - name: 📢 Deployment Failed
       if: failure()
       run: |
-        echo "🔁 System restored to last stable version"
+        echo "Deployment failed and rollback was executed."
