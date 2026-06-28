@@ -357,7 +357,7 @@ def shell(title, active, body_html, extra_css="", extra_js=""):
 <nav class="nav">
   <a class="brand" href="/">
     <span class="brand-mark">VS</span>
-    <span>Veera Sir DevOps AIOPS</span>
+    <span>Veera Sir DevOps AIOPS MLOPS</span>
   </a>
 
   <ul class="nav-links">
